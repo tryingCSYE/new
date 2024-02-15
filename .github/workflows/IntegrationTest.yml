@@ -1,0 +1,50 @@
+name: Integration Tests Workflow
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: testdb
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14' # Specify your Node.js version here
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Set up MySQL
+      run: |
+       sudo systemctl start mysql
+        mysql -e 'CREATE DATABASE IF NOT EXISTS testdb;' -uroot -proot
+        mysql -e 'FLUSH PRIVILEGES;' -uroot -proot
+        
+    - name: Run integration tests
+      run: npm test
+      env:
+        NODE_ENV: test
+        DATABASE_URL: mysql://root:root@localhost:3306/testdb
+        # Set any additional environment variables your tests might need
